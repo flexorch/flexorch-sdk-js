@@ -1,10 +1,10 @@
 import type { Transport } from "../transport.js";
 
 const SUPPORTED_FORMATS = new Set([
-  "json", "jsonl", "csv", "parquet", "md", "xml", "xlsx", "rag",
+  "json", "jsonl", "csv", "parquet", "md", "xml", "xlsx", "rag", "hf",
 ]);
 
-export type ExportFormat = "json" | "jsonl" | "csv" | "parquet" | "md" | "xml" | "xlsx" | "rag";
+export type ExportFormat = "json" | "jsonl" | "csv" | "parquet" | "md" | "xml" | "xlsx" | "rag" | "hf";
 
 export class Dataset {
   readonly id: string;
@@ -74,6 +74,45 @@ export class Dataset {
     return {
       s3Key: String(data["s3_key"] ?? ""),
       sizeBytes: Number(data["size_bytes"] ?? 0),
+    };
+  }
+
+  async chunks(opts: {
+    page?: number;
+    pageSize?: number;
+    qualityGrade?: string;
+    piiMasked?: boolean;
+  } = {}): Promise<{
+    items: Array<{
+      chunkId: string;
+      chunkIndex: number;
+      text: string;
+      tokenCount: number;
+      metadata: Record<string, unknown>;
+    }>;
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
+    const params: Record<string, string> = {};
+    if (opts.page !== undefined) params["page"] = String(opts.page);
+    if (opts.pageSize !== undefined) params["page_size"] = String(opts.pageSize);
+    if (opts.qualityGrade !== undefined) params["quality_grade"] = opts.qualityGrade;
+    if (opts.piiMasked !== undefined) params["pii_masked"] = String(opts.piiMasked);
+    const data = ((await this._transport.get(`/datasets/${this.id}/chunks`, params)) ??
+      {}) as Record<string, unknown>;
+    const raw = (data["items"] as Record<string, unknown>[] | undefined) ?? [];
+    return {
+      items: raw.map((item) => ({
+        chunkId: String(item["chunk_id"] ?? ""),
+        chunkIndex: Number(item["chunk_index"] ?? 0),
+        text: String(item["text"] ?? ""),
+        tokenCount: Number(item["token_count"] ?? 0),
+        metadata: (item["metadata"] as Record<string, unknown>) ?? {},
+      })),
+      total: Number(data["total"] ?? 0),
+      page: Number(data["page"] ?? 1),
+      pageSize: Number(data["page_size"] ?? 20),
     };
   }
 

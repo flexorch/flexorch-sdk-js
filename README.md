@@ -167,7 +167,7 @@ await client.connectors.get(id);
 await client.connectors.delete(id);
 ```
 
-Supported connector types: `"s3"`, `"gcs"`, `"azure_blob"`.
+Supported connector types: `"s3"`. (`"gcs"` and `"azure_blob"` coming in a future release.)
 
 ---
 

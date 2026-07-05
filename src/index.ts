@@ -24,4 +24,7 @@ export {
   JobTimeoutError,
 } from "./errors.js";
 
-export const version = "0.1.0";
+export { RAGDocument, FlexOrchRetriever, FlexOrchReader } from "./rag.js";
+export type { RetrieverOptions, ReaderLoadOptions } from "./rag.js";
+
+export const version = "0.2.0";

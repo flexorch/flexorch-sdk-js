@@ -7,6 +7,27 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [0.2.0] — 2026-07-05
+
+### Added
+
+**RAG module (`src/rag.ts`)**
+- `RAGDocument` — text chunk with `page_content` + `metadata`; duck-type compatible with LangChain `Document` and LlamaIndex `Document` (`.text` alias)
+- `FlexOrchRetriever` — LangChain-compatible retriever backed by `/v1/search`; supports `qualityThreshold`, `piiMasked`, `topK`, `mode`, `documentType`, `language` options; implements `getRelevantDocuments` and `agetRelevantDocuments` shims
+- `FlexOrchReader` — LlamaIndex-compatible reader backed by `/v1/datasets/{id}/chunks`; auto-paginates, supports `minQuality` and `piiMaskedOnly` filters; returns `RAGDocument[]`
+
+**Dataset model**
+- `Dataset.chunks(opts)` — paginated RAG chunk retrieval with typed response (`items`, `total`, `page`, `pageSize`); Pro+ plan required
+- `hf` added to `ExportFormat` union and supported format set
+
+**Search**
+- `client.search(query, { mode, ... })` — new `mode` option (auto / hybrid / semantic / structured)
+
+**Tests**
+- `tests/rag-helpers.test.ts` — FlexOrchRetriever + FlexOrchReader unit tests via vitest
+
+---
+
 ## [0.1.0] — 2026-05-24
 
 ### Added

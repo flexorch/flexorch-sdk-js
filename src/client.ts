@@ -122,11 +122,12 @@ export class FlexOrchClient {
 
   async search(
     query: string,
-    opts: { topK?: number; filters?: SearchFilters } = {},
+    opts: { topK?: number; mode?: string; filters?: SearchFilters } = {},
   ): Promise<SearchResult[]> {
     const body: Record<string, unknown> = {
       query,
       top_k: opts.topK ?? 10,
+      mode: opts.mode ?? "auto",
     };
     if (opts.filters) {
       const f = opts.filters;
