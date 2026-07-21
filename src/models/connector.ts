@@ -48,7 +48,9 @@ export interface ConnectorTestResult {
   message: string;
 }
 
-export type ConnectorType = "s3" | "gcs" | "azure_blob" | "google_drive";
+export type ConnectorType =
+  | "s3" | "gcs" | "azure_blob" | "google_drive"
+  | "pgvector_external" | "pinecone" | "qdrant";
 
 export interface S3ConnectorConfig {
   bucket: string;

@@ -48,6 +48,41 @@ describe("ConnectorsResource", () => {
     expect(conn.type).toBe("google_drive");
   });
 
+  it("creates a pinecone connector", async () => {
+    const client = makeClient(
+      mockFetch(201, { id: "c3", name: "Prod Pinecone", type: "pinecone", active: true, created_at: "" }),
+    );
+    const conn = await client.connectors.create("Prod Pinecone", "pinecone", {
+      api_key: "pc-key",
+      index_name: "flexorch-idx",
+    });
+    expect(conn.id).toBe("c3");
+    expect(conn.type).toBe("pinecone");
+  });
+
+  it("creates a qdrant connector", async () => {
+    const client = makeClient(
+      mockFetch(201, { id: "c4", name: "Prod Qdrant", type: "qdrant", active: true, created_at: "" }),
+    );
+    const conn = await client.connectors.create("Prod Qdrant", "qdrant", {
+      url: "https://xyz.qdrant.io:6333",
+      collection_name: "flexorch_chunks",
+    });
+    expect(conn.id).toBe("c4");
+    expect(conn.type).toBe("qdrant");
+  });
+
+  it("creates a pgvector_external connector", async () => {
+    const client = makeClient(
+      mockFetch(201, { id: "c5", name: "Customer PG", type: "pgvector_external", active: true, created_at: "" }),
+    );
+    const conn = await client.connectors.create("Customer PG", "pgvector_external", {
+      connection_string: "postgresql://user:pass@host:5432/db",
+    });
+    expect(conn.id).toBe("c5");
+    expect(conn.type).toBe("pgvector_external");
+  });
+
   it("lists connectors", async () => {
     const client = makeClient(
       mockFetch(200, {

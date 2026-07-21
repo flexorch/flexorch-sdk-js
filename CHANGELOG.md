@@ -7,6 +7,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [0.2.2] — 2026-07-21
+
+### Added
+
+- `ConnectorsResource.create()` — `pgvector_external`, `pinecone`, `qdrant` added to the accepted connector `type` values (vector destinations for dataset indexing `push_only`/`both` modes)
+
+---
+
 ## [0.2.1] — 2026-07-21
 
 ### Added
