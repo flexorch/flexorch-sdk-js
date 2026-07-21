@@ -1,7 +1,7 @@
 import { Connector, type ConnectorTestResult, type ConnectorType } from "../models/connector.js";
 import type { Transport } from "../transport.js";
 
-const VALID_TYPES = new Set<ConnectorType>(["s3", "gcs", "azure_blob"]);
+const VALID_TYPES = new Set<ConnectorType>(["s3", "gcs", "azure_blob", "google_drive"]);
 
 export class ConnectorsResource {
   constructor(private readonly _t: Transport) {}

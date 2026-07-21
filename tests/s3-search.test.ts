@@ -30,6 +30,24 @@ describe("ConnectorsResource", () => {
     );
   });
 
+  it("creates a google_drive connector", async () => {
+    const client = makeClient(
+      mockFetch(201, {
+        id: "c2",
+        name: "Shared Invoices",
+        type: "google_drive",
+        active: true,
+        created_at: "",
+      }),
+    );
+    const conn = await client.connectors.create("Shared Invoices", "google_drive", {
+      folder_id: "1a2B3cD4eFgH5iJkL6mN7oP8qR9sT0uV",
+      credentials_json: "{}",
+    });
+    expect(conn.id).toBe("c2");
+    expect(conn.type).toBe("google_drive");
+  });
+
   it("lists connectors", async () => {
     const client = makeClient(
       mockFetch(200, {
