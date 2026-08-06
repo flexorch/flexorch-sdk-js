@@ -1,0 +1,21 @@
+#!/bin/sh
+# Mirrors .github/workflows/ci.yml (npm test + npm run build) and adds
+# typecheck, which CI does not run as a separate step - tsup's --dts build
+# step does not fail the same way `tsc --noEmit` does on every type error.
+#
+# This file is the tracked source of truth. It is not itself a git hook —
+# run scripts/install-git-hooks.sh once after cloning to install it into
+# .git/hooks/pre-push (git does not run hooks from anywhere else).
+
+set -e
+
+echo "pre-push: running npm test ..."
+npm test
+
+echo "pre-push: running npm run typecheck ..."
+npm run typecheck
+
+echo "pre-push: running npm run build ..."
+npm run build
+
+echo "pre-push: all checks passed."

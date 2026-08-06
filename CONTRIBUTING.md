@@ -6,7 +6,10 @@
 npm install
 npm run build
 npm test
+sh scripts/install-git-hooks.sh
 ```
+
+The last command installs a local `pre-push` hook that runs `npm test`, `npm run typecheck`, and `npm run build` before every push. CI (`npm test` + `npm run build`) doesn't run `tsc --noEmit` as its own step, so a type error can slip past CI's build step; the hook catches it locally instead. Run the install script once after cloning — `.git/hooks/` isn't tracked by git, so this doesn't happen automatically.
 
 ## Tests
 
