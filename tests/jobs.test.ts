@@ -55,6 +55,36 @@ describe("Job.wait()", () => {
     const job = await client.jobs.get("j1");
     expect(await job.dataset()).toBeNull();
   });
+
+  it("surfaces degraded from execution_summary", async () => {
+    const client = makeClient(
+      mockFetch(200, {
+        job_id: "j1",
+        status: "completed",
+        execution_summary: { execution_id: 1, status: "completed", degraded: true },
+      }),
+    );
+    const job = await client.jobs.get("j1");
+    expect(job.degraded).toBe(true);
+  });
+
+  it("degraded defaults to false without execution_summary", async () => {
+    const client = makeClient(mockFetch(200, { job_id: "j1", status: "completed" }));
+    const job = await client.jobs.get("j1");
+    expect(job.degraded).toBe(false);
+  });
+
+  it("degraded is false when execution_summary says false", async () => {
+    const client = makeClient(
+      mockFetch(200, {
+        job_id: "j1",
+        status: "completed",
+        execution_summary: { degraded: false },
+      }),
+    );
+    const job = await client.jobs.get("j1");
+    expect(job.degraded).toBe(false);
+  });
 });
 
 describe("JobsResource", () => {

@@ -14,6 +14,16 @@ export class Job {
   readonly qualityScore: number | null;
   readonly documentId: string | null;
   readonly hasDataset: boolean;
+  /**
+   * True when the underlying pipeline execution completed but one or more
+   * non-critical steps failed (e.g. structured extraction couldn't find a
+   * table in the document). The job still succeeds — PII detection and
+   * quality scoring results are still meaningful — but `records`/columns
+   * may be empty. Read from `execution_summary.degraded`; false for jobs
+   * with no execution (e.g. dataset_build). wait() does not throw for a
+   * degraded completion.
+   */
+  readonly degraded: boolean;
   readonly failureReason: string | null;
   private readonly _transport: Transport;
 
@@ -24,6 +34,7 @@ export class Job {
     qualityScore: number | null;
     documentId: string | null;
     hasDataset: boolean;
+    degraded: boolean;
     failureReason: string | null;
     _transport: Transport;
   }) {
@@ -33,12 +44,14 @@ export class Job {
     this.qualityScore = data.qualityScore;
     this.documentId = data.documentId;
     this.hasDataset = data.hasDataset;
+    this.degraded = data.degraded;
     this.failureReason = data.failureReason;
     this._transport = data._transport;
   }
 
   static fromDict(data: Record<string, unknown>, transport: Transport): Job {
     const quality = (data["quality"] as Record<string, unknown> | undefined) ?? {};
+    const executionSummary = data["execution_summary"] as Record<string, unknown> | null | undefined;
     return new Job({
       id: String(data["job_id"] ?? data["id"] ?? ""),
       status: String(data["status"] ?? ""),
@@ -46,6 +59,7 @@ export class Job {
       qualityScore: (quality["score"] as number | null) ?? null,
       documentId: (data["document_id"] as string | null) ?? null,
       hasDataset: Boolean(data["has_dataset"] ?? false),
+      degraded: Boolean(executionSummary?.["degraded"] ?? false),
       failureReason: (data["failure_reason"] as string | null) ?? null,
       _transport: transport,
     });

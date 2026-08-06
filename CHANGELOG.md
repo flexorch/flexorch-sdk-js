@@ -7,6 +7,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [0.2.3] — 2026-08-06
+
+### Added
+
+- `Job.degraded` — `true` when the underlying pipeline execution completed but one or more non-critical steps failed (e.g. structured extraction couldn't find a table in the document). The job still succeeds — PII detection and quality scoring results are still meaningful — but the resulting dataset's records/columns may be empty. Read from the API's `execution_summary.degraded` field; defaults to `false` for jobs with no execution (e.g. `dataset_build`). `wait()` does not throw for a degraded completion.
+
+---
+
 ## [0.2.2] — 2026-07-21
 
 ### Added

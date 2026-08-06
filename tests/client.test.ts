@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { FlexOrchClient, AuthError, ValidationError } from "../src/index.js";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import { FlexOrchClient, AuthError, ValidationError, version } from "../src/index.js";
 import { mockFetch } from "./helpers.js";
 
 describe("FlexOrchClient — init", () => {
@@ -78,5 +81,18 @@ describe("FlexOrchClient — error handling", () => {
       _fetch: mockFetch(422, { error: { code: "VALIDATION_ERROR", message: "bad param" } }),
     });
     await expect(client.search("x")).rejects.toBeInstanceOf(ValidationError);
+  });
+});
+
+describe("version", () => {
+  it("matches package.json", () => {
+    // Regression guard: the version constant drifted from package.json for
+    // two releases (stuck at 0.2.0 while package.json moved to 0.2.2) with
+    // no test to catch it.
+    const dir = dirname(fileURLToPath(import.meta.url));
+    const pkg = JSON.parse(readFileSync(join(dir, "..", "package.json"), "utf-8")) as {
+      version: string;
+    };
+    expect(version).toBe(pkg.version);
   });
 });

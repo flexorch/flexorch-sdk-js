@@ -134,6 +134,10 @@ for (const r of results) {
 
 Throws `JobFailedError` if the job fails, `JobTimeoutError` if timeout is exceeded.
 
+Key properties: `id`, `status`, `qualityGrade`, `qualityScore`, `documentId`, `hasDataset`, `degraded`, `failureReason`.
+
+`degraded` is `true` when the underlying pipeline execution completed but one or more non-critical steps failed (e.g. structured extraction couldn't find a table in the document). The job still succeeds — PII detection and quality scoring results are still meaningful — but the resulting dataset's records/columns may be empty. `wait()` does not throw for a degraded completion.
+
 ---
 
 ### `Dataset`

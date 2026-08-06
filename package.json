@@ -1,6 +1,6 @@
 {
   "name": "flexorch-sdk",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "TypeScript/JavaScript SDK for the FlexOrch API — process documents, build LLM-ready datasets",
   "type": "module",
   "main": "./dist/index.cjs",
