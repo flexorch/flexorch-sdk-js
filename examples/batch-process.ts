@@ -19,7 +19,8 @@ const jobs = await client.processMany(files, { locale: "und" });
 for (const job of jobs) {
   try {
     const done = await job.wait({ timeout: 300 });
-    const ds = await done.dataset();
+    const built = await done.buildDataset();
+    const ds = await (await built.wait()).dataset();
     if (ds) {
       const bytes = await ds.export("jsonl");
       const path = `output/${ds.slug}.jsonl`;

@@ -40,6 +40,24 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+/**
+ * Strip the standard {status, data, error} envelope every /v1/* endpoint
+ * returns (see dev-docs/api-reference.md "Standart Response Wrapper" in the
+ * flexorch repo). Values that don't match this shape are returned as-is.
+ */
+export function unwrap(body: unknown): unknown {
+  if (
+    body !== null &&
+    typeof body === "object" &&
+    "data" in body &&
+    "error" in body &&
+    typeof (body as Record<string, unknown>)["status"] === "string"
+  ) {
+    return (body as Record<string, unknown>)["data"];
+  }
+  return body;
+}
+
 export class Transport {
   private baseUrl: string;
   private defaultHeaders: Record<string, string>;
@@ -60,7 +78,7 @@ export class Transport {
     this.fetchFn = fetchFn ?? globalThis.fetch.bind(globalThis);
     this.defaultHeaders = {
       "X-API-KEY": apiKey,
-      "User-Agent": "flexorch-sdk-js/0.1.0",
+      "User-Agent": "flexorch-sdk-js/0.3.0",
     };
   }
 
@@ -115,7 +133,7 @@ export class Transport {
         if (!ct.includes("application/json")) return null;
         const text = await res.text();
         if (!text.trim()) return null;
-        return JSON.parse(text);
+        return unwrap(JSON.parse(text));
       } catch (err) {
         clearTimeout(timer);
         if (err instanceof FlexOrchError) throw err;

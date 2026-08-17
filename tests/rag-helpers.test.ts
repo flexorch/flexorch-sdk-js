@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { FlexOrchClient } from "../src/index.js";
 import { RAGDocument, FlexOrchRetriever, FlexOrchReader } from "../src/rag.js";
-import { mockFetch, mockFetchSequence } from "./helpers.js";
+import { mockFetch, mockFetchSequence, envelope } from "./helpers.js";
 
 const CHUNK_ITEM = {
   chunk_id: "ch-1",
@@ -51,21 +51,21 @@ describe("RAGDocument", () => {
 
 describe("FlexOrchRetriever", () => {
   it("throws on invalid qualityThreshold", () => {
-    const client = makeClient(mockFetch(200, {}));
+    const client = makeClient(mockFetch(200, envelope({})));
     expect(() => new FlexOrchRetriever(client, { qualityThreshold: "X" })).toThrow(
       "qualityThreshold must be",
     );
   });
 
   it("toString includes config", () => {
-    const client = makeClient(mockFetch(200, {}));
+    const client = makeClient(mockFetch(200, envelope({})));
     const r = new FlexOrchRetriever(client, { qualityThreshold: "A", topK: 3 });
     expect(r.toString()).toContain("A");
     expect(r.toString()).toContain("3");
   });
 
   it("invoke returns RAGDocument list", async () => {
-    const client = makeClient(mockFetch(200, { results: [SEARCH_RESULT] }));
+    const client = makeClient(mockFetch(200, envelope({ results: [SEARCH_RESULT] })));
     const retriever = new FlexOrchRetriever(client);
     const docs = await retriever.invoke("invoice amount");
     expect(docs).toHaveLength(1);
@@ -77,7 +77,7 @@ describe("FlexOrchRetriever", () => {
 
   it("filters out results below quality threshold", async () => {
     const lowGrade = { ...SEARCH_RESULT, metadata: { quality_grade: "D" } };
-    const client = makeClient(mockFetch(200, { results: [lowGrade] }));
+    const client = makeClient(mockFetch(200, envelope({ results: [lowGrade] })));
     const retriever = new FlexOrchRetriever(client, { qualityThreshold: "B" });
     const docs = await retriever.invoke("anything");
     expect(docs).toHaveLength(0);
@@ -85,21 +85,21 @@ describe("FlexOrchRetriever", () => {
 
   it("allows grade equal to threshold", async () => {
     const bGrade = { ...SEARCH_RESULT, metadata: { quality_grade: "B" } };
-    const client = makeClient(mockFetch(200, { results: [bGrade] }));
+    const client = makeClient(mockFetch(200, envelope({ results: [bGrade] })));
     const retriever = new FlexOrchRetriever(client, { qualityThreshold: "B" });
     const docs = await retriever.invoke("anything");
     expect(docs).toHaveLength(1);
   });
 
   it("getRelevantDocuments is a compatibility alias for invoke", async () => {
-    const client = makeClient(mockFetch(200, { results: [SEARCH_RESULT] }));
+    const client = makeClient(mockFetch(200, envelope({ results: [SEARCH_RESULT] })));
     const retriever = new FlexOrchRetriever(client);
     const docs = await retriever.getRelevantDocuments("query");
     expect(docs).toHaveLength(1);
   });
 
   it("passes mode to search request", async () => {
-    const fetch = mockFetch(200, { results: [] });
+    const fetch = mockFetch(200, envelope({ results: [] }));
     const client = makeClient(fetch);
     const retriever = new FlexOrchRetriever(client, { mode: "semantic" });
     await retriever.invoke("query");
@@ -113,12 +113,12 @@ describe("FlexOrchRetriever", () => {
 
 describe("FlexOrchReader", () => {
   it("toString returns FlexOrchReader()", () => {
-    const client = makeClient(mockFetch(200, {}));
+    const client = makeClient(mockFetch(200, envelope({})));
     expect(new FlexOrchReader(client).toString()).toBe("FlexOrchReader()");
   });
 
   it("throws on invalid minQuality", async () => {
-    const client = makeClient(mockFetch(200, {}));
+    const client = makeClient(mockFetch(200, envelope({})));
     await expect(new FlexOrchReader(client).loadData("42", { minQuality: "Z" })).rejects.toThrow(
       "minQuality must be",
     );
@@ -126,12 +126,12 @@ describe("FlexOrchReader", () => {
 
   it("loads a single page of chunks", async () => {
     const client = makeClient(
-      mockFetch(200, {
+      mockFetch(200, envelope({
         items: [CHUNK_ITEM],
         total: 1,
         page: 1,
         page_size: 100,
-      }),
+      })),
     );
     const reader = new FlexOrchReader(client);
     const docs = await reader.loadData("42");
@@ -147,8 +147,8 @@ describe("FlexOrchReader", () => {
     const page1 = { items: [CHUNK_ITEM, CHUNK_ITEM], total: 3, page: 1, page_size: 2 };
     const page2 = { items: [CHUNK_ITEM], total: 3, page: 2, page_size: 2 };
     const client = makeClient(mockFetchSequence([
-      { status: 200, body: page1 },
-      { status: 200, body: page2 },
+      { status: 200, body: envelope(page1) },
+      { status: 200, body: envelope(page2) },
     ]));
     const reader = new FlexOrchReader(client);
     const docs = await reader.loadData("42", { pageSize: 2 });
@@ -157,7 +157,7 @@ describe("FlexOrchReader", () => {
 
   it("returns empty list when dataset has no chunks", async () => {
     const client = makeClient(
-      mockFetch(200, { items: [], total: 0, page: 1, page_size: 100 }),
+      mockFetch(200, envelope({ items: [], total: 0, page: 1, page_size: 100 })),
     );
     const docs = await new FlexOrchReader(client).loadData("42");
     expect(docs).toHaveLength(0);
@@ -169,7 +169,7 @@ describe("FlexOrchReader", () => {
 describe("Dataset.chunks()", () => {
   it("returns paginated chunk response", async () => {
     const client = makeClient(
-      mockFetch(200, { items: [CHUNK_ITEM], total: 1, page: 1, page_size: 20 }),
+      mockFetch(200, envelope({ items: [CHUNK_ITEM], total: 1, page: 1, page_size: 20 })),
     );
     const ds = await client.datasets.get("d1");
     expect(typeof ds.chunks).toBe("function");
@@ -180,7 +180,7 @@ describe("Dataset.chunks()", () => {
 
 describe("client.search mode param", () => {
   it("defaults to auto", async () => {
-    const fetch = mockFetch(200, { results: [] });
+    const fetch = mockFetch(200, envelope({ results: [] }));
     const client = makeClient(fetch);
     await client.search("query");
     const body = JSON.parse((fetch.mock.calls[0]![1] as RequestInit).body as string);
@@ -188,7 +188,7 @@ describe("client.search mode param", () => {
   });
 
   it("passes explicit mode through", async () => {
-    const fetch = mockFetch(200, { results: [] });
+    const fetch = mockFetch(200, envelope({ results: [] }));
     const client = makeClient(fetch);
     await client.search("query", { mode: "hybrid" });
     const body = JSON.parse((fetch.mock.calls[0]![1] as RequestInit).body as string);

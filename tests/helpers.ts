@@ -3,6 +3,20 @@ import type { FetchFn } from "../src/transport.js";
 
 export const BASE = "https://api.flexorch.com/v1";
 
+// The real API wraps every /v1/* response in {status, data, error} (see
+// dev-docs/api-reference.md "Standart Response Wrapper" in the flexorch
+// repo). Transport unwraps this and hands resources the `data` payload —
+// wrap fixtures with these so tests exercise that unwrap step for real.
+export function envelope(data: unknown, status = "success", meta?: Record<string, unknown>): unknown {
+  const body: Record<string, unknown> = { status, data, error: null };
+  if (meta) body["meta"] = meta;
+  return body;
+}
+
+export function accepted(data: unknown, meta?: Record<string, unknown>): unknown {
+  return envelope(data, "accepted", meta ?? { poll: "/v1/jobs/{id}" });
+}
+
 // Use mockImplementation so each call gets a fresh Response (body can only be read once).
 export function mockFetch(status: number, body: unknown, headers: Record<string, string> = {}): FetchFn {
   return vi.fn().mockImplementation(() => {

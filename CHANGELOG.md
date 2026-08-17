@@ -7,6 +7,32 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [0.3.0] — 2026-08-17
+
+### Fixed (critical — the SDK did not work against the real API before this release)
+
+- **`Transport` never unwrapped the `{status, data, error}` envelope every `/v1/*` endpoint returns** — every resource method received the raw envelope instead of its `data` payload, so parsed fields (`job.id`, `dataset.name`, ...) were silently wrong or empty. Fixed centrally in `Transport` (new `unwrap()`). The test suite's mocked fixtures previously modeled the *unwrapped* shape too, so this was never caught — all fixtures now mock the real wrapped responses.
+- `FlexOrchClient.process()` sent the uploaded file under multipart field name `"file"` — the backend expects `"files"` (plural) and silently drops anything else, returning `400 MISSING_INPUT`. Fixed. (Also previously untested — `process()` had zero test coverage; added.)
+- `FlexOrchClient.process()` / `processFromS3()` parsed the response as a single `Job` — the real `/data-process/async` response is `{accepted, rejected, jobs: [...]}` (the same multi-file-capable shape the UI uses). Now correctly unpacks `jobs[0]`, and throws `ValidationError` with the real rejection reason if the file was rejected instead of accepted.
+- `Dataset.export()` called `GET /datasets/{id}/export?format=X` — the real route is `GET /datasets/{id}/export/{fmt}` (`fmt` is a path segment). Fixed; also added the `minQuality` option for `format="rag"`.
+- `UsageResource.current()` called the non-existent `/usage/current` — the real endpoint is `GET /usage`, with a differently-shaped (nested `trial`/`usage.credits`) response. `UsageSnapshot` fields updated to match; `resetAt`/`periodStart`/`periodEnd` (which the real API never returned) replaced with `isTrial`/`trialEndsAt`/`trialDaysRemaining`.
+- README documented several methods that don't exist in the SDK (`jobs.cancel()`, `datasets.delete()`, `webhooks.create()`) and a fictional `usage.current()` return shape. Rewritten to match the actual API surface.
+
+### Added
+
+- **`Job.buildDataset()`** / **`DatasetsResource.buildFromExecution()`** — building a dataset from a completed job's execution is a separate, explicit API call (`POST /datasets/build-from-execution/{executionId}`); it was previously undocumented and unreachable from the SDK, so `job.dataset()` on a fresh job always returned `null`. `Job.executionId` is now parsed from `execution_summary`/`processing_summary`.
+- `Dataset.rows()`, `Dataset.profile()`, `Dataset.complianceReport()` — row preview, quality/privacy profile, and KVKK/GDPR compliance report.
+- `DocumentsResource` (`client.documents.get()` / `.list()`) and `Document.reprocess()`.
+- `ConnectorsResource` scheduled-sync methods: `createSchedule()`, `listSchedules()`, `deleteSchedule()`, `triggerSchedule()`, `scheduleLogs()`.
+- `JobsResource.submitFeedback()` / `.getFeedback()`.
+- `UsageResource.history()`, `.qualityTrend()`, `.rateLimits()`.
+
+### Changed
+
+- README quick start and all `examples/*.ts` updated to include the now-required `job.buildDataset()` + `.wait()` step before `.dataset()`.
+
+---
+
 ## [0.2.3] — 2026-08-06
 
 ### Added

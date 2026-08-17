@@ -26,7 +26,8 @@ const jobs = await client.processFromS3(conn.id, keys, { locale: "de" });
 for (const job of jobs) {
   try {
     const done = await job.wait({ timeout: 300 });
-    const ds = await done.dataset();
+    const built = await done.buildDataset();
+    const ds = await (await built.wait()).dataset();
     if (ds) {
       const push = await ds.exportToS3(conn.id, "jsonl", "processed/");
       console.log(`  ✓ ${ds.name} → s3://${push.s3Key} (${push.sizeBytes} bytes)`);

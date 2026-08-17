@@ -11,7 +11,8 @@ const done = await job.wait();
 console.log(`Quality grade : ${done.qualityGrade}`);
 console.log(`Quality score : ${done.qualityScore}`);
 
-const dataset = await done.dataset();
+const built = await done.buildDataset();
+const dataset = await (await built.wait()).dataset();
 if (dataset) {
   const bytes = await dataset.export("jsonl");
   await Bun.write("output.jsonl", bytes); // or: fs.writeFileSync("output.jsonl", bytes)

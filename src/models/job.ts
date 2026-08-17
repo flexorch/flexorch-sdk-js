@@ -7,12 +7,34 @@ export interface JobQuality {
   score: number | null;
 }
 
+export interface JobFeedback {
+  id: string;
+  jobId: string;
+  rating: string;
+  issue: string | null;
+  notes: string | null;
+  createdAt: string;
+}
+
+export function jobFeedbackFromDict(data: Record<string, unknown>): JobFeedback {
+  return {
+    id: String(data["id"] ?? ""),
+    jobId: String(data["job_id"] ?? ""),
+    rating: String(data["rating"] ?? ""),
+    issue: (data["issue"] as string | null) ?? null,
+    notes: (data["notes"] as string | null) ?? null,
+    createdAt: String(data["created_at"] ?? ""),
+  };
+}
+
 export class Job {
   readonly id: string;
   readonly status: string;
   readonly qualityGrade: string | null;
   readonly qualityScore: number | null;
   readonly documentId: string | null;
+  /** Needed by buildDataset() — POST /datasets/build-from-execution/{executionId}. */
+  readonly executionId: number | null;
   readonly hasDataset: boolean;
   /**
    * True when the underlying pipeline execution completed but one or more
@@ -33,6 +55,7 @@ export class Job {
     qualityGrade: string | null;
     qualityScore: number | null;
     documentId: string | null;
+    executionId: number | null;
     hasDataset: boolean;
     degraded: boolean;
     failureReason: string | null;
@@ -43,6 +66,7 @@ export class Job {
     this.qualityGrade = data.qualityGrade;
     this.qualityScore = data.qualityScore;
     this.documentId = data.documentId;
+    this.executionId = data.executionId;
     this.hasDataset = data.hasDataset;
     this.degraded = data.degraded;
     this.failureReason = data.failureReason;
@@ -50,15 +74,26 @@ export class Job {
   }
 
   static fromDict(data: Record<string, unknown>, transport: Transport): Job {
-    const quality = (data["quality"] as Record<string, unknown> | undefined) ?? {};
     const executionSummary = data["execution_summary"] as Record<string, unknown> | null | undefined;
+    const processingSummary = data["processing_summary"] as Record<string, unknown> | null | undefined;
+    let quality = data["quality"] as Record<string, unknown> | undefined;
+    if (!quality && processingSummary) {
+      quality = processingSummary["quality"] as Record<string, unknown> | undefined;
+    }
+    quality = quality ?? {};
+    const executionId =
+      (executionSummary?.["execution_id"] as number | undefined) ??
+      (processingSummary?.["execution_id"] as number | undefined) ??
+      (data["execution_id"] as number | undefined) ??
+      null;
     return new Job({
       id: String(data["job_id"] ?? data["id"] ?? ""),
       status: String(data["status"] ?? ""),
       qualityGrade: (quality["grade"] as string | null) ?? null,
       qualityScore: (quality["score"] as number | null) ?? null,
       documentId: (data["document_id"] as string | null) ?? null,
-      hasDataset: Boolean(data["has_dataset"] ?? false),
+      executionId,
+      hasDataset: Boolean(data["has_dataset"] ?? processingSummary?.["has_dataset"] ?? false),
       degraded: Boolean(executionSummary?.["degraded"] ?? false),
       failureReason: (data["failure_reason"] as string | null) ?? null,
       _transport: transport,
@@ -98,6 +133,50 @@ export class Job {
     if (items.length === 0) return null;
     const { Dataset } = await import("./dataset.js");
     return Dataset.fromDict(items[0]!, this._transport);
+  }
+
+  /**
+   * Build a dataset from this job's execution.
+   *
+   * A completed data_process job does not have a dataset yet — building one
+   * is a separate, explicit step (`POST
+   * /datasets/build-from-execution/{executionId}`). Call this after
+   * `.wait()`, then `.wait()` again on the returned dataset_build Job before
+   * calling `.dataset()`:
+   *
+   * ```ts
+   * const job = await client.process("invoice.pdf");
+   * const done = await job.wait();
+   * const dataset = await (await done.buildDataset()).wait().then(j => j.dataset());
+   * ```
+   *
+   * @throws {Error} If this job has no executionId to build a dataset from
+   *   (e.g. it failed, or is itself a dataset_build job).
+   */
+  async buildDataset(opts: {
+    name?: string;
+    description?: string;
+    slug?: string;
+    forceRebuild?: boolean;
+    replaceExisting?: boolean;
+  } = {}): Promise<Job> {
+    if (!this.executionId) {
+      throw new Error(
+        `Job ${this.id} has no executionId to build a dataset from (job must be a completed data_process job).`,
+      );
+    }
+    const body: Record<string, unknown> = {
+      force_rebuild: opts.forceRebuild ?? false,
+      replace_existing: opts.replaceExisting ?? false,
+    };
+    if (opts.name !== undefined) body["name"] = opts.name;
+    if (opts.description !== undefined) body["description"] = opts.description;
+    if (opts.slug !== undefined) body["slug"] = opts.slug;
+    const data = (await this._transport.post(
+      `/datasets/build-from-execution/${this.executionId}`,
+      body,
+    )) as Record<string, unknown>;
+    return Job.fromDict(data, this._transport);
   }
 
   toString(): string {

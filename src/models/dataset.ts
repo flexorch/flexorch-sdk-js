@@ -51,11 +51,12 @@ export class Dataset {
     });
   }
 
-  async export(format: ExportFormat): Promise<Uint8Array> {
+  async export(format: ExportFormat, opts: { minQuality?: string } = {}): Promise<Uint8Array> {
     if (!SUPPORTED_FORMATS.has(format)) {
       throw new Error(`Unsupported format "${format}". Choose from: ${[...SUPPORTED_FORMATS].sort().join(", ")}`);
     }
-    return this._transport.getBytes(`/datasets/${this.id}/export`, { format });
+    const params = opts.minQuality !== undefined ? { min_quality: opts.minQuality } : undefined;
+    return this._transport.getBytes(`/datasets/${this.id}/export/${format}`, params);
   }
 
   async exportToS3(
@@ -137,6 +138,31 @@ export class Dataset {
       chunksIndexed: Number(data["chunks_indexed"] ?? 0),
       totalChunks: Number(data["total_chunks"] ?? 0),
     };
+  }
+
+  /** Preview dataset rows. */
+  async rows(opts: { page?: number; pageSize?: number; q?: string } = {}): Promise<Record<string, unknown>> {
+    const params: Record<string, string> = {};
+    if (opts.page !== undefined) params["page"] = String(opts.page);
+    if (opts.pageSize !== undefined) params["page_size"] = String(opts.pageSize);
+    if (opts.q !== undefined) params["q"] = opts.q;
+    return ((await this._transport.get(`/datasets/${this.id}/rows`, params)) ?? {}) as Record<string, unknown>;
+  }
+
+  /** Quality/privacy profile — only available once status is "ready". */
+  async profile(): Promise<Record<string, unknown>> {
+    return ((await this._transport.get(`/datasets/${this.id}/profile`)) ?? {}) as Record<string, unknown>;
+  }
+
+  /** KVKK/GDPR processing transparency report (Pro+ required). */
+  async complianceReport(format: "json" | "pdf" = "json"): Promise<Record<string, unknown> | Uint8Array> {
+    if (format === "pdf") {
+      return this._transport.getBytes(`/datasets/${this.id}/compliance-report`, { format: "pdf" });
+    }
+    return ((await this._transport.get(`/datasets/${this.id}/compliance-report`, { format })) ?? {}) as Record<
+      string,
+      unknown
+    >;
   }
 
   toString(): string {
