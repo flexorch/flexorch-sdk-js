@@ -7,6 +7,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [0.3.1] — 2026-08-19
+
+### Fixed
+
+- **`job.buildDataset().wait().dataset()` — the exact chain the README documents — resolved to `null` even after the dataset was built successfully.** A completed `dataset_build` job reports its output via `dataset_summary.dataset_id`; neither top-level `has_dataset` nor `processing_summary` (which `Job.dataset()` relied on) is ever set for that job type, so the built dataset was unreachable from the job that built it. `Job.fromDict()` now reads `datasetId` from `dataset_summary`, and `Job.dataset()` fetches `/datasets/{datasetId}` directly when it's known. Found by exercising the documented chain against the live API — none of the mocked fixtures modeled a real `dataset_build` completion response. (Same root cause as, and fixed in parity with, `flexorch-sdk` 0.3.1.)
+
+---
+
 ## [0.3.0] — 2026-08-17
 
 ### Fixed (critical — the SDK did not work against the real API before this release)

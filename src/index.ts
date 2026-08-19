@@ -39,4 +39,4 @@ export {
 export { RAGDocument, FlexOrchRetriever, FlexOrchReader } from "./rag.js";
 export type { RetrieverOptions, ReaderLoadOptions } from "./rag.js";
 
-export const version = "0.3.0";
+export const version = "0.3.1";

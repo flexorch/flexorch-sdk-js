@@ -78,7 +78,7 @@ export class Transport {
     this.fetchFn = fetchFn ?? globalThis.fetch.bind(globalThis);
     this.defaultHeaders = {
       "X-API-KEY": apiKey,
-      "User-Agent": "flexorch-sdk-js/0.3.0",
+      "User-Agent": "flexorch-sdk-js/0.3.1",
     };
   }
 

@@ -36,6 +36,8 @@ export class Job {
   /** Needed by buildDataset() — POST /datasets/build-from-execution/{executionId}. */
   readonly executionId: number | null;
   readonly hasDataset: boolean;
+  /** Set from `dataset_summary.dataset_id` on a completed dataset_build job's response. */
+  readonly datasetId: number | null;
   /**
    * True when the underlying pipeline execution completed but one or more
    * non-critical steps failed (e.g. structured extraction couldn't find a
@@ -57,6 +59,7 @@ export class Job {
     documentId: string | null;
     executionId: number | null;
     hasDataset: boolean;
+    datasetId: number | null;
     degraded: boolean;
     failureReason: string | null;
     _transport: Transport;
@@ -68,6 +71,7 @@ export class Job {
     this.documentId = data.documentId;
     this.executionId = data.executionId;
     this.hasDataset = data.hasDataset;
+    this.datasetId = data.datasetId;
     this.degraded = data.degraded;
     this.failureReason = data.failureReason;
     this._transport = data._transport;
@@ -76,6 +80,7 @@ export class Job {
   static fromDict(data: Record<string, unknown>, transport: Transport): Job {
     const executionSummary = data["execution_summary"] as Record<string, unknown> | null | undefined;
     const processingSummary = data["processing_summary"] as Record<string, unknown> | null | undefined;
+    const datasetSummary = data["dataset_summary"] as Record<string, unknown> | null | undefined;
     let quality = data["quality"] as Record<string, unknown> | undefined;
     if (!quality && processingSummary) {
       quality = processingSummary["quality"] as Record<string, unknown> | undefined;
@@ -93,7 +98,13 @@ export class Job {
       qualityScore: (quality["score"] as number | null) ?? null,
       documentId: (data["document_id"] as string | null) ?? null,
       executionId,
-      hasDataset: Boolean(data["has_dataset"] ?? processingSummary?.["has_dataset"] ?? false),
+      // dataset_summary is only present on a completed dataset_build job's
+      // response — neither has_dataset nor processing_summary is ever set
+      // for that job type, so without this .dataset() always returned null
+      // for the job.buildDataset().wait().dataset() chain even though the
+      // dataset had been built successfully.
+      hasDataset: Boolean(data["has_dataset"] ?? processingSummary?.["has_dataset"] ?? Boolean(datasetSummary) ?? false),
+      datasetId: (datasetSummary?.["dataset_id"] as number | undefined) ?? null,
       degraded: Boolean(executionSummary?.["degraded"] ?? false),
       failureReason: (data["failure_reason"] as string | null) ?? null,
       _transport: transport,
@@ -125,13 +136,19 @@ export class Job {
   }
 
   async dataset(): Promise<Dataset | null> {
+    const { Dataset } = await import("./dataset.js");
+
+    if (this.datasetId !== null) {
+      const data = (await this._transport.get(`/datasets/${this.datasetId}`)) as Record<string, unknown>;
+      return Dataset.fromDict(data, this._transport);
+    }
+
     if (!this.hasDataset) return null;
     const data = (await this._transport.get("/datasets", {
       job_id: this.id,
     })) as Record<string, unknown>;
     const items = (data["items"] as Record<string, unknown>[] | undefined) ?? [];
     if (items.length === 0) return null;
-    const { Dataset } = await import("./dataset.js");
     return Dataset.fromDict(items[0]!, this._transport);
   }
 

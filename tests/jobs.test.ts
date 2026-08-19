@@ -135,7 +135,7 @@ describe("Job.buildDataset()", () => {
     const t = new Transport("fx_test", "https://api.flexorch.com/v1", 30, 1, buildFetch);
     const job = new Job({
       id: "j1", status: "completed", qualityGrade: null, qualityScore: null,
-      documentId: null, executionId: 42, hasDataset: false, degraded: false,
+      documentId: null, executionId: 42, hasDataset: false, datasetId: null, degraded: false,
       failureReason: null, _transport: t,
     });
 
@@ -150,5 +150,36 @@ describe("Job.buildDataset()", () => {
     const client = makeClient(mockFetch(200, envelope({ job_id: "j1", status: "completed" })));
     const job = await client.jobs.get("j1");
     await expect(job.buildDataset()).rejects.toThrow("executionId");
+  });
+
+  it("job.buildDataset().wait().dataset() resolves via dataset_summary.dataset_id", async () => {
+    // A completed dataset_build job reports its output only through
+    // dataset_summary.dataset_id — never has_dataset or processing_summary
+    // (those are data_process-job-only fields). Before this fixture existed
+    // that gap wasn't modeled, so .dataset() always returned null for this
+    // exact documented chain despite the dataset having been built.
+    const fetch = mockFetchSequence([
+      { status: 200, body: envelope({ job_id: "145", status: "completed", execution_summary: { execution_id: 106, degraded: false } }) },
+      { status: 202, body: accepted({ job_id: "146", job_type: "dataset_build", status: "queued", reference_id: 106 }) },
+      { status: 200, body: envelope({
+          id: 146, job_type: "dataset_build", status: "completed",
+          dataset_summary: {
+            dataset_id: 28, name: "dataset_execution_106", slug: "dataset-execution-106",
+            status: "ready", version: 1, row_count: 1,
+          },
+        }) },
+      { status: 200, body: envelope({
+          id: 28, name: "dataset_execution_106", slug: "dataset-execution-106",
+          status: "ready", row_count: 1,
+        }) },
+    ]);
+    const client = new FlexOrchClient({ apiKey: "fx_test", maxRetries: 1, _fetch: fetch });
+    const job = await client.jobs.get("145");
+    const built = await job.buildDataset();
+    const done = await built.wait({ pollInterval: 0.01 });
+    const ds = await done.dataset();
+    expect(ds).not.toBeNull();
+    expect(ds!.id).toBe("28");
+    expect(ds!.status).toBe("ready");
   });
 });
